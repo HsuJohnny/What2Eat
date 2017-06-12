@@ -1,5 +1,8 @@
 package com.example.jeff_lu.what2eat;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.RecyclerView;
@@ -13,6 +16,9 @@ import java.util.ArrayList;
 import android.content.Context;
 import android.graphics.Rect;
 import android.view.LayoutInflater;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -29,7 +35,14 @@ public class MainActivity extends AppCompatActivity {
             "test6",
             "test7",
     };
+    protected LocationManager locationManager;
+    //protected LocationListener locationListener;
     Context mContext;
+    double latitude;
+    double longitude;
+    public void getRestaurantInfo(double latitude, double longitude){
+
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,9 +66,20 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         mRecyclerView.setAdapter(mAdapter);
+        /**************************************************
+        //get location info, send it to getRestaurantInfo for information needed for list
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+            getRestaurantInfo(latitude, longitude);
+        }else{
 
-
+        }
+        ****************************************************/
     }
+
     public class MyAdapter extends RecyclerView.Adapter<MyAdapter.ViewHolder> {
         private List<Restaurant> mData;
 
