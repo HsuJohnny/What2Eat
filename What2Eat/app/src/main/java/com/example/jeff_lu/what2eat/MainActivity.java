@@ -116,7 +116,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             try{
-                url = new URL("www.google.com");
+                url = new URL("https://www.google.com.tw/maps/search/restaurant+/@latitude,longitude");
                 Document doc = Jsoup.parse(url, 5000);
                 Elements titles = doc.select("h3[class=section-result-title]");
                 Elements ratings = doc.select("span[class=cards-rating-score]");
