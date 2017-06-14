@@ -65,6 +65,8 @@ public class MainActivity extends AppCompatActivity {
     protected LocationListener locationListener;
     double latitude;
     double longitude;
+    String stringLatitude;
+    String stringLogitude;
     URL url;
     Thread th;
     Context mContext;
@@ -104,7 +106,12 @@ public class MainActivity extends AppCompatActivity {
             latitude = location.getLatitude();
             longitude = location.getLongitude();
             getRestaurantInfo(latitude, longitude);
+        }else {
+            latitude = 25.0266686;
+            longitude = 121.5371623;
         }
+        stringLatitude = String.valueOf(latitude);
+        stringLogitude = String.valueOf(longitude);
         th = new Thread(r0);
         th.start();
     }
@@ -116,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             try{
-                url = new URL("https://www.google.com.tw/maps/search/restaurant+/@latitude,longitude");
+                url = new URL(String.format("https://www.google.com.tw/maps/search/restaurant+/@ %f,%f", stringLatitude, stringLogitude));
                 Document doc = Jsoup.parse(url, 5000);
                 Elements titles = doc.select("h3[class=section-result-title]");
                 Elements ratings = doc.select("span[class=cards-rating-score]");
