@@ -3,11 +3,22 @@ package com.example.jeff_lu.what2eat;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.text.TextUtilsCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.LinearLayoutManager;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpCookie;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.List;
+
+import android.text.TextUtils;
 import android.widget.TextView;
 import android.widget.ImageView;
 import android.view.View;
@@ -19,6 +30,10 @@ import android.view.LayoutInflater;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+
+import org.jsoup.HttpStatusException;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -35,11 +50,13 @@ public class MainActivity extends AppCompatActivity {
             "test6",
             "test7",
     };
+    //private GoogleApiClient mGoogleApiClient;
     protected LocationManager locationManager;
-    //protected LocationListener locationListener;
-    Context mContext;
+    protected LocationListener locationListener;
     double latitude;
     double longitude;
+    Context mContext;
+
     public void getRestaurantInfo(double latitude, double longitude){
 
     }
@@ -66,7 +83,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         mRecyclerView.setAdapter(mAdapter);
-        /**************************************************
         //get location info, send it to getRestaurantInfo for information needed for list
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -77,7 +93,69 @@ public class MainActivity extends AppCompatActivity {
         }else{
 
         }
-        ****************************************************/
+
+    }
+
+    interface CrawlingCallback{
+        void onPageCrawlingComplete();
+        void onPageCrawlingFailed();
+        void onCrawlingComplete();
+    }
+
+    private class CrawlerRunnable implements Runnable {
+        CrawlingCallback mCallback;
+        String mUrl;
+
+        public CrawlerRunnable(CrawlingCallback callback, String Url) {
+            this.mCallback = callback;
+            this.mUrl = Url;
+        }
+
+        @Override
+        public void run() {
+            String pageContent = retrieveHtmlContent(mUrl);
+
+            if (!TextUtils.isEmpty(pageContent.toString())) {
+                //get the restaurant in google map page
+                Document doc = Jsoup.parse(pageContent.toString());
+
+            }
+        }
+
+        private String retrieveHtmlContent(String Url) {
+            URL httpUrl = null;
+            try {
+                httpUrl = new URL(Url);
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            }
+
+            int responseCode = HttpStatus.SC_OK;
+            StringBuilder pageContent = new StringBuilder();
+            try {
+                if (httpUrl != null) {
+                    HttpURLConnection conn = (HttpURLConnection) httpUrl.openConnection();
+                    conn.setConnectTimeout(5000);
+                    conn.setReadTimeout(5000);
+                    responseCode = conn.getResponseCode();
+                    if (responseCode != HttpStatus.SC_OK) {
+                        throw new IllegalAccessException("connection failed.");
+                    }
+                    BufferedReader br = new BufferedReader(new InputStreamReader());
+                    String line = null;
+                    while ((line = br.readLine()) != null) {
+                        pageContent.append(line);
+                    }
+                }
+            }catch (IOException e) {
+                e.printStackTrace();
+                mCallback.onPageCrawlingFailed();
+            }catch (IllegalAccessException e) {
+                e.printStackTrace();
+                mCallback.onPageCrawlingFailed();
+            }
+            return pageContent.toString();
+        }
     }
 
     public class MyAdapter extends RecyclerView.Adapter<MyAdapter.ViewHolder> {
