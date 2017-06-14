@@ -34,6 +34,16 @@ import android.location.LocationManager;
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+import java.io.InputStreamReader;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -55,8 +65,12 @@ public class MainActivity extends AppCompatActivity {
     protected LocationListener locationListener;
     double latitude;
     double longitude;
+    URL url;
+    Thread th;
     Context mContext;
-
+    private static final int restaurantNumber = 5;
+    String[] restaurantTitleFromWeb = new String[restaurantNumber];
+    String[] restaurantRatingFromWeb = new String[restaurantNumber];
     public void getRestaurantInfo(double latitude, double longitude){
 
     }
@@ -90,12 +104,33 @@ public class MainActivity extends AppCompatActivity {
             latitude = location.getLatitude();
             longitude = location.getLongitude();
             getRestaurantInfo(latitude, longitude);
-        }else{
-
         }
-
+        th = new Thread(r0);
+        th.start();
     }
 
+    // crawl the google map web page and get the restaurant title and rating
+    // data saved in MainActivity two string array
+    // restaurantTitleFromWeb and restaurantRatingFromWeb
+    private Runnable r0=new Runnable() {
+        @Override
+        public void run() {
+            try{
+                url = new URL("www.google.com");
+                Document doc = Jsoup.parse(url, 5000);
+                Elements titles = doc.select("h3[class=section-result-title]");
+                Elements ratings = doc.select("span[class=cards-rating-score]");
+                for(int i=0;i<5;i++) {
+                    restaurantTitleFromWeb[i] = titles.get(i).text();
+                    restaurantRatingFromWeb[i] = ratings.get(i).text();
+                }
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    };
+
+    /*******************************************************************
     interface CrawlingCallback{
         void onPageCrawlingComplete();
         void onPageCrawlingFailed();
@@ -118,6 +153,8 @@ public class MainActivity extends AppCompatActivity {
             if (!TextUtils.isEmpty(pageContent.toString())) {
                 //get the restaurant in google map page
                 Document doc = Jsoup.parse(pageContent.toString());
+                Elements title = doc.select(".section-result-title");
+                Elements rating = doc.select(".cards-rating-score");
 
             }
         }
@@ -130,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
 
-            int responseCode = HttpStatus.SC_OK;
+            int responseCode = HttpURLConnection.HTTP_OK;
             StringBuilder pageContent = new StringBuilder();
             try {
                 if (httpUrl != null) {
@@ -138,10 +175,10 @@ public class MainActivity extends AppCompatActivity {
                     conn.setConnectTimeout(5000);
                     conn.setReadTimeout(5000);
                     responseCode = conn.getResponseCode();
-                    if (responseCode != HttpStatus.SC_OK) {
+                    if (responseCode != HttpURLConnection.HTTP_OK) {
                         throw new IllegalAccessException("connection failed.");
                     }
-                    BufferedReader br = new BufferedReader(new InputStreamReader());
+                    BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                     String line = null;
                     while ((line = br.readLine()) != null) {
                         pageContent.append(line);
@@ -157,7 +194,45 @@ public class MainActivity extends AppCompatActivity {
             return pageContent.toString();
         }
     }
+    ***********************************************************************/
+    /***********************************************************************
+    private class RunnableManager{
+        private static final int KEEP_ALIVE_ITEM = 1;
+        private final TimeUnit KEEP_ALIVE_TIME_UNIT = TimeUnit.SECONDS;
+        private static final int CORE_POOL_SIZE = 1;
+        private static final int MAXIMUM_POOL_SIZE = 1;
+        private final BlockingQueue<Runnable> mCrawlingQueue;
 
+        private final ThreadPoolExecutor mCrawlingThreadPool;
+
+        public RunnableManager() {
+            mCrawlingQueue = new LinkedBlockingQueue<>();
+            mCrawlingThreadPool = new ThreadPoolExecutor(CORE_POOL_SIZE,
+                                                         MAXIMUM_POOL_SIZE,
+                                                         KEEP_ALIVE_ITEM,
+                                                         KEEP_ALIVE_TIME_UNIT,
+                                                         mCrawlingQueue);
+        }
+
+        private void addToCrawlingQueue(Runnable runnable) {
+            mCrawlingThreadPool.execute(runnable);
+        }
+
+        private void cancelAllRunnable() {
+            mCrawlingThreadPool.shutdownNow();
+        }
+
+        private int getUnusedPoolSize() {
+            return MAXIMUM_POOL_SIZE - mCrawlingThreadPool.getActiveCount();
+        }
+
+        private boolean isShuttingDown() {
+            return mCrawlingThreadPool.isShutdown()
+                    || mCrawlingThreadPool.isTerminating();
+        }
+
+    }
+    ************************************************************************************/
     public class MyAdapter extends RecyclerView.Adapter<MyAdapter.ViewHolder> {
         private List<Restaurant> mData;
 
