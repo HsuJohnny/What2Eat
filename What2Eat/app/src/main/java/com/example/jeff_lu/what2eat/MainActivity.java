@@ -26,26 +26,19 @@ import android.view.ViewGroup;
 import java.util.ArrayList;
 import android.content.Context;
 import android.graphics.Rect;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.widget.Toast;
 
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.InputStreamReader;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements LocationListener{
 
     FoldableLayout mFoldableLayout;
     private MyAdapter mAdapter;
@@ -65,8 +58,8 @@ public class MainActivity extends AppCompatActivity {
     protected LocationListener locationListener;
     double latitude;
     double longitude;
-    String stringLatitude;
-    String stringLogitude;
+    String stringLatitude = "25.0266686";
+    String stringLogitude = "121.5371623";
     URL url;
     Thread th;
     Context mContext;
@@ -99,21 +92,51 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         mRecyclerView.setAdapter(mAdapter);
+
         //get location info, send it to getRestaurantInfo for information needed for list
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            latitude = location.getLatitude();
-            longitude = location.getLongitude();
-            getRestaurantInfo(latitude, longitude);
+
+        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                if(location != null) {
+                    latitude = location.getLatitude();
+                    longitude = location.getLongitude();
+                    Log.v("location", "succeed");
+                }
+            }else {
+                Toast.makeText(this, "無法定位座標", Toast.LENGTH_LONG).show();
+                Log.v("location manager","fail");
+                latitude = 25.0266686;
+                longitude = 121.5371623;
+            }
         }else {
-            latitude = 25.0266686;
-            longitude = 121.5371623;
+            Toast.makeText(this, "請開啟定位服務", Toast.LENGTH_LONG).show();
         }
         stringLatitude = String.valueOf(latitude);
         stringLogitude = String.valueOf(longitude);
+
         th = new Thread(r0);
         th.start();
+
+    }
+
+    @Override
+    public void onLocationChanged(Location arg0){
+        // TODO Auto-generated method stub
+    }
+    @Override
+    public void onProviderDisabled(String arg0) {
+        // TODO Auto-generated method stub
+    }
+    @Override
+    public void onProviderEnabled(String arg0) {
+        // TODO Auto-generated method stub
+    }
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+        //status=OUT_OF_SERVICE
+        //status=TEMPORARILY_UNAVAILABLE
     }
 
     // crawl the google map web page and get the restaurant title and rating
@@ -123,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             try{
-                url = new URL(String.format("https://www.google.com.tw/maps/search/restaurant+/@ %f,%f", stringLatitude, stringLogitude));
+                url = new URL(String.format("https://www.google.com.tw/maps/search/restaurant+/@ %s,%s", stringLatitude, stringLogitude));
                 Document doc = Jsoup.parse(url, 5000);
                 Elements titles = doc.select("h3[class=section-result-title]");
                 Elements ratings = doc.select("span[class=cards-rating-score]");
@@ -131,115 +154,14 @@ public class MainActivity extends AppCompatActivity {
                     restaurantTitleFromWeb[i] = titles.get(i).text();
                     restaurantRatingFromWeb[i] = ratings.get(i).text();
                 }
+                Log.v("into try","into try");
             }catch (Exception e) {
                 e.printStackTrace();
+                Log.v("didn't connect","fail");
             }
         }
     };
 
-    /*******************************************************************
-    interface CrawlingCallback{
-        void onPageCrawlingComplete();
-        void onPageCrawlingFailed();
-        void onCrawlingComplete();
-    }
-
-    private class CrawlerRunnable implements Runnable {
-        CrawlingCallback mCallback;
-        String mUrl;
-
-        public CrawlerRunnable(CrawlingCallback callback, String Url) {
-            this.mCallback = callback;
-            this.mUrl = Url;
-        }
-
-        @Override
-        public void run() {
-            String pageContent = retrieveHtmlContent(mUrl);
-
-            if (!TextUtils.isEmpty(pageContent.toString())) {
-                //get the restaurant in google map page
-                Document doc = Jsoup.parse(pageContent.toString());
-                Elements title = doc.select(".section-result-title");
-                Elements rating = doc.select(".cards-rating-score");
-
-            }
-        }
-
-        private String retrieveHtmlContent(String Url) {
-            URL httpUrl = null;
-            try {
-                httpUrl = new URL(Url);
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-            }
-
-            int responseCode = HttpURLConnection.HTTP_OK;
-            StringBuilder pageContent = new StringBuilder();
-            try {
-                if (httpUrl != null) {
-                    HttpURLConnection conn = (HttpURLConnection) httpUrl.openConnection();
-                    conn.setConnectTimeout(5000);
-                    conn.setReadTimeout(5000);
-                    responseCode = conn.getResponseCode();
-                    if (responseCode != HttpURLConnection.HTTP_OK) {
-                        throw new IllegalAccessException("connection failed.");
-                    }
-                    BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    String line = null;
-                    while ((line = br.readLine()) != null) {
-                        pageContent.append(line);
-                    }
-                }
-            }catch (IOException e) {
-                e.printStackTrace();
-                mCallback.onPageCrawlingFailed();
-            }catch (IllegalAccessException e) {
-                e.printStackTrace();
-                mCallback.onPageCrawlingFailed();
-            }
-            return pageContent.toString();
-        }
-    }
-    ***********************************************************************/
-    /***********************************************************************
-    private class RunnableManager{
-        private static final int KEEP_ALIVE_ITEM = 1;
-        private final TimeUnit KEEP_ALIVE_TIME_UNIT = TimeUnit.SECONDS;
-        private static final int CORE_POOL_SIZE = 1;
-        private static final int MAXIMUM_POOL_SIZE = 1;
-        private final BlockingQueue<Runnable> mCrawlingQueue;
-
-        private final ThreadPoolExecutor mCrawlingThreadPool;
-
-        public RunnableManager() {
-            mCrawlingQueue = new LinkedBlockingQueue<>();
-            mCrawlingThreadPool = new ThreadPoolExecutor(CORE_POOL_SIZE,
-                                                         MAXIMUM_POOL_SIZE,
-                                                         KEEP_ALIVE_ITEM,
-                                                         KEEP_ALIVE_TIME_UNIT,
-                                                         mCrawlingQueue);
-        }
-
-        private void addToCrawlingQueue(Runnable runnable) {
-            mCrawlingThreadPool.execute(runnable);
-        }
-
-        private void cancelAllRunnable() {
-            mCrawlingThreadPool.shutdownNow();
-        }
-
-        private int getUnusedPoolSize() {
-            return MAXIMUM_POOL_SIZE - mCrawlingThreadPool.getActiveCount();
-        }
-
-        private boolean isShuttingDown() {
-            return mCrawlingThreadPool.isShutdown()
-                    || mCrawlingThreadPool.isTerminating();
-        }
-
-    }
-    ************************************************************************************/
     public class MyAdapter extends RecyclerView.Adapter<MyAdapter.ViewHolder> {
         private List<Restaurant> mData;
 
