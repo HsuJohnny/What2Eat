@@ -148,8 +148,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener{
             try{
                 url = new URL(String.format("https://www.google.com.tw/maps/search/restaurant+/@ %s,%s", stringLatitude, stringLogitude));
                 Document doc = Jsoup.parse(url, 5000);
-                Elements titles = doc.select("h3[class=section-result-title]");
-                Elements ratings = doc.select("span[class=cards-rating-score]");
+                Elements titles = doc.select("h3.section-result-title > span");
+                Elements ratings = doc.select("span.cards-rating-score");
                 for(int i=0;i<5;i++) {
                     restaurantTitleFromWeb[i] = titles.get(i).text();
                     restaurantRatingFromWeb[i] = ratings.get(i).text();
