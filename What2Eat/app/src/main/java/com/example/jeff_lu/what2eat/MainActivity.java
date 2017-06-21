@@ -60,7 +60,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener{
     double longitude;
     String stringLatitude = "25.0266686";
     String stringLogitude = "121.5371623";
-    URL url;
+    String url;
     Thread th;
     Context mContext;
     private static final int restaurantNumber = 5;
@@ -146,14 +146,16 @@ public class MainActivity extends AppCompatActivity implements LocationListener{
         @Override
         public void run() {
             try{
-                url = new URL(String.format("https://www.google.com.tw/maps/search/restaurant+/@ %s,%s", stringLatitude, stringLogitude));
-                Document doc = Jsoup.parse(url, 5000);
+                url = String.format("https://www.google.com.tw/maps/search/restaurant+/@ %s,%s", stringLatitude, stringLogitude);
+                Document doc = Jsoup.connect(url).get();
                 Elements titles = doc.select("h3.section-result-title > span");
                 Elements ratings = doc.select("span.cards-rating-score");
+
                 for(int i=0;i<5;i++) {
                     restaurantTitleFromWeb[i] = titles.get(i).text();
                     restaurantRatingFromWeb[i] = ratings.get(i).text();
                 }
+
                 Log.v("into try","into try");
             }catch (Exception e) {
                 e.printStackTrace();
